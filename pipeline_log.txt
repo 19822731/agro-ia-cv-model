@@ -1,0 +1,81 @@
+[2026-04-25 03:50:28] 
+🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀
+[2026-04-25 03:50:28] AGRO-IA — PIPELINE AUTOMÁTICO DE MEJORA DE MODELOS
+[2026-04-25 03:50:28] 🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀
+
+[2026-04-25 03:50:28] ============================================================
+[2026-04-25 03:50:28] PASO 1: Esperando finalización de EfficientNet-B0...
+[2026-04-25 03:50:28] ============================================================
+[2026-04-25 03:50:28] ⏳ EfficientNet aún entrenando. Monitoreando cada 30 segundos...
+[2026-04-25 03:55:28]   ... aún esperando (5 min)
+[2026-04-25 04:00:28]   ... aún esperando (10 min)
+[2026-04-25 04:05:28]   ... aún esperando (15 min)
+[2026-04-25 04:10:28]   ... aún esperando (20 min)
+[2026-04-25 04:15:28]   ... aún esperando (25 min)
+[2026-04-25 04:20:28]   ... aún esperando (30 min)
+[2026-04-25 04:25:28]   ... aún esperando (35 min)
+[2026-04-25 04:30:28]   ... aún esperando (40 min)
+[2026-04-25 04:35:29]   ... aún esperando (45 min)
+[2026-04-25 04:40:29]   ... aún esperando (50 min)
+[2026-04-25 04:45:29]   ... aún esperando (55 min)
+[2026-04-25 04:50:29]   ... aún esperando (60 min)
+[2026-04-25 04:55:29]   ... aún esperando (65 min)
+[2026-04-25 05:00:29]   ... aún esperando (70 min)
+[2026-04-25 05:05:29]   ... aún esperando (75 min)
+[2026-04-25 05:10:29]   ... aún esperando (80 min)
+[2026-04-25 05:15:29]   ... aún esperando (85 min)
+[2026-04-25 05:20:29]   ... aún esperando (90 min)
+[2026-04-25 05:25:29]   ... aún esperando (95 min)
+[2026-04-25 05:30:29]   ... aún esperando (100 min)
+[2026-04-25 05:35:29]   ... aún esperando (105 min)
+[2026-04-25 05:40:29]   ... aún esperando (110 min)
+[2026-04-25 05:43:29] ✅ EfficientNet completado tras 6780s de espera: Val Acc = 77.1%
+[2026-04-25 05:43:29] ============================================================
+[2026-04-25 05:43:29] PASO 2: Integrando EfficientNet-B0 en el bridge de Pangea...
+[2026-04-25 05:43:29] ============================================================
+[2026-04-25 05:43:29]   📋 Backup creado: /Users/arquimedescarrizo/.gemini/antigravity/scratch/AgroIA_CV_Model/pangea_inference_bridge.py.backup_pre_efficientnet
+[2026-04-25 05:43:29]   ✅ Bridge actualizado con EfficientNet-B0
+[2026-04-25 05:43:29] ============================================================
+[2026-04-25 05:43:29] PASO 3: Entrenando LoRA de Qwen2.5-VL (1000 pasos)...
+[2026-04-25 05:43:29] ============================================================
+[2026-04-25 05:43:29]   Comando: /Users/arquimedescarrizo/.gemini/antigravity/scratch/AgroIA_CV_Model/venv/bin/python3 -m mlx_vlm.lora --model-path model_local --dataset /Users/arquimedescarrizo/.gemini/antigravity/scratch/AgroIA_CV_Model/forja_lora --batch-size 1 --steps 1000 --learning-rate 1e-5 --output-path /Users/arquimedescarrizo/.gemini/antigravity/scratch/AgroIA_CV_Model/lora_v2 --apply-chat-template
+[2026-04-25 05:43:29]   Dataset: /Users/arquimedescarrizo/.gemini/antigravity/scratch/AgroIA_CV_Model/forja_lora
+[2026-04-25 05:43:29]   Output: /Users/arquimedescarrizo/.gemini/antigravity/scratch/AgroIA_CV_Model/lora_v2
+[2026-04-25 05:43:29]   ⚡ Esto puede tomar 2-3 horas en Apple M4...
+[2026-04-25 06:43:02] 
+🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀
+[2026-04-25 06:43:02] AGRO-IA — PIPELINE AUTOMÁTICO DE MEJORA DE MODELOS
+[2026-04-25 06:43:02] 🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀
+
+[2026-04-25 06:43:02] ============================================================
+[2026-04-25 06:43:02] PASO 1: Esperando finalización de EfficientNet-B0...
+[2026-04-25 06:43:02] ============================================================
+[2026-04-25 06:43:02] ✅ EfficientNet ya entrenado: Val Acc = 77.1%
+[2026-04-25 06:43:02] ============================================================
+[2026-04-25 06:43:02] PASO 2: Integrando EfficientNet-B0 en el bridge de Pangea...
+[2026-04-25 06:43:02] ============================================================
+[2026-04-25 06:43:02]   ⚠️ EfficientNet ya integrado en el bridge. Saltando.
+[2026-04-25 06:43:02] ============================================================
+[2026-04-25 06:43:02] PASO 3: Entrenando LoRA de Qwen2.5-VL (1000 pasos)...
+[2026-04-25 06:43:02] ============================================================
+[2026-04-25 06:43:02]   🧹 Liberando memoria: cerrando Pangea en segundo plano...
+[2026-04-25 06:43:04]   ✅ Memoria liberada. Entorno limpio para entrenamiento pesado.
+[2026-04-25 06:43:04]   Comando: /Users/arquimedescarrizo/.gemini/antigravity/scratch/AgroIA_CV_Model/venv/bin/python3 -m mlx_vlm.lora --model-path model_local --dataset /Users/arquimedescarrizo/.gemini/antigravity/scratch/AgroIA_CV_Model/forja_lora --batch-size 1 --steps 1000 --learning-rate 1e-5 --output-path /Users/arquimedescarrizo/.gemini/antigravity/scratch/AgroIA_CV_Model/lora_v2 --apply-chat-template --image-resize-shape 1024 1024
+[2026-04-25 06:43:04]   Dataset: /Users/arquimedescarrizo/.gemini/antigravity/scratch/AgroIA_CV_Model/forja_lora
+[2026-04-25 06:43:04]   Output: /Users/arquimedescarrizo/.gemini/antigravity/scratch/AgroIA_CV_Model/lora_v2
+[2026-04-25 06:43:04]   ⚡ Esto puede tomar 2-3 horas en Apple M4...
+[2026-04-25 09:09:21]   ✅ Entrenamiento LoRA completado exitosamente
+[2026-04-25 09:09:21]   📁 Adaptador guardado en: /Users/arquimedescarrizo/.gemini/antigravity/scratch/AgroIA_CV_Model/lora_v2
+[2026-04-25 09:09:21] ============================================================
+[2026-04-25 09:09:21] PASO 4: Integrando nuevo LoRA v2...
+[2026-04-25 09:09:21] ============================================================
+[2026-04-25 09:09:21]   ❌ No se encontró /Users/arquimedescarrizo/.gemini/antigravity/scratch/AgroIA_CV_Model/lora_v2/adapters.safetensors
+[2026-04-25 09:09:21] ============================================================
+[2026-04-25 09:09:21] PIPELINE COMPLETADO — RESUMEN
+[2026-04-25 09:09:21] ============================================================
+[2026-04-25 09:09:21]   🎯 EfficientNet-B0: Val Acc = 77.1% (7 clases)
+[2026-04-25 09:09:21] 
+[2026-04-25 09:09:21]   Para activar los cambios, reiniciá Pangea:
+[2026-04-25 09:09:21]   cd /Users/arquimedescarrizo/.gemini/antigravity/scratch/AgroIA_CV_Model && ./venv/bin/python3 pangea_inference_bridge.py
+[2026-04-25 09:09:21] 
+[2026-04-25 09:09:21]   ¡Listo para diagnosticar caña con precisión! 🌾

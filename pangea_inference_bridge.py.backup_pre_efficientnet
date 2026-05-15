@@ -1,0 +1,334 @@
+import io
+import base64
+import torch
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from PIL import Image
+from ultralytics import YOLO
+import os
+import cv2
+from fastapi.middleware.cors import CORSMiddleware
+import numpy as np
+
+# --- MOTOR MULTIMODAL QWEN2.5-VL (APPLE MLX) ---
+import transformers.tokenization_utils_base
+from mlx_vlm import load, generate
+from mlx_vlm.prompt_utils import apply_chat_template
+from mlx_vlm.utils import load_config
+
+# PARCHE DE COMPATIBILIDAD IAG-ARQUI:
+# Mapear 'vocab' para evitar AttributeError en tokenizadores lentos (Qwen2)
+if not hasattr(transformers.tokenization_utils_base.PreTrainedTokenizerBase, "vocab"):
+    transformers.tokenization_utils_base.PreTrainedTokenizerBase.vocab = property(
+        lambda self: self.get_vocab()
+    )
+
+# REGLA CORE IAG-ARQUI: Sistema Inmunológico activado
+torch.autograd.set_detect_anomaly(True)
+
+app = FastAPI(title="Agro-IA Pangea Híbrido (Cascada + VLM)")
+
+# --- MIDDLEWARE CORS IAG-ARQUI ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # En producción se limitaría al dominio de Vercel
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ===== FASE DE CARGA HÍBRIDA =====
+print("[Módulo Pangea] Inicializando Sistema en Cascada (Detector + Clasificador)...")
+
+# 1. Cazador (Fase 1: Detecta DÓNDE está la hoja panorámica y la recorta)
+try:
+    cazador = YOLO("runs/detect/agro_ia_cana_v23/weights/best.pt") 
+    print("[Sistema] Agente Cazador Lejano (YOLO-Detect v23) Activo.")
+except Exception as e:
+    print(f"Cazador no encontrado, cayendo a default: {e}")
+    cazador = YOLO("yolov8n.pt")
+
+# 2. Laboratorio (Fase 2: Analiza de QUÉ ENFERMEDAD sufre el recorte)
+try:
+    # Fase 2: Laboratorio (Clasificador) - Restaurado al ganador Nano (v12)
+    model_clasificador_path = os.getenv("MODEL_CLASIFICADOR_PATH", "runs/classify/agro_ia_cana_class_v12/weights/best.pt")
+    laboratorio = YOLO(model_clasificador_path)
+    # Cuando termine usaríamos: laboratorio = YOLO("runs/classify/agro_ia_cana_class_v1/weights/best.pt")
+    print("[Sistema] Agente Clasificador Académico Activo.")
+except Exception as e:
+    print(f"Laboratorio no encontrado: {e}")
+    laboratorio = None
+
+# 3. Científico (Fase 3: Razonamiento Multimodal de Alta Precisión)
+try:
+    vlm_model_path = "mlx-community/Qwen2.5-VL-7B-Instruct-4bit"
+    # IMPORTANTE: Cargamos la Sabiduría Experta de Agro-IA (V14 - 200 Pasos)
+    vlm_adapter_path = "." # Donde residen adapters.safetensors y adapter_config.json
+    print(f"[Sistema] Despertando al Científico de Agro-IA ({vlm_model_path}) con Adaptador LoRA...")
+    vlm_model, vlm_processor = load(vlm_model_path, adapter_path=vlm_adapter_path)
+    vlm_config = load_config(vlm_model_path)
+    print("[Sistema] Agente Científico Multimodal (Doctor LoRA) Activo y en RAM.")
+except Exception as e:
+    print(f"[Error] Fallo al cargar VLM: {e}")
+    vlm_model, vlm_processor, vlm_config = None, None, None
+
+def razonamiento_vlm(image_path: str) -> str:
+    """Invoca al Científico de Agro-IA para un dictamen clínico detallado con jerarquía regional."""
+    if not vlm_model: return "Reporte VLM no disponible por error de carga."
+    
+    # CONOCIMIENTO EXPERTO IAG-ARQUI (Mundial + Local NOA)
+    protocolo_analisis = (
+        "Eres el Científico Agrónomo Experto de Agro-IA, especialista en Saccharum officinarum. "
+        "Tu objetivo es dar un diagnóstico preciso usando Markdown para estructura. "
+        "Sigue este orden de prioridad (Análisis Ordinal):\n"
+        "1. PRIORIDAD LOCAL (NOA ARGENTINA): Busca signos de Diatraea saccharalis (Barrenador), "
+        "Roya Marrón (Puccinia melanocephala), Carbón (Sporisorium scitamineum), SCMV (Mosaico), "
+        "RSD (Raquitismo) o Estría Roja.\n"
+        "2. EXPLORACIÓN GLOBAL: Si no hay signos locales claros, evalúa amenazas mundiales como "
+        "Roya Naranja, Escaldadura, Pokkah Boeng o Pudrición Roja.\n\n"
+        "INSTRUCCIONES DE FORMATO:\n"
+        "- Usa **negritas** para nombres de enfermedades y plagas.\n"
+        "- Usa listas de puntos si hay múltiples hallazgos.\n"
+        "- Sé directo y clínico. Evita introducciones genéricas.\n"
+        "Al final, escribe obligatoriamente: [VEREDICTO: SANO] o [VEREDICTO: RIESGO]."
+    )
+    
+    prompt = apply_chat_template(vlm_processor, vlm_config, protocolo_analisis, num_images=1)
+    
+    try:
+        resultado = generate(
+            vlm_model, 
+            vlm_processor, 
+            prompt, 
+            image=[image_path], 
+            max_tokens=600, # Aumentado para evitar cortes
+            temperature=0.1,
+            verbose=False
+        )
+        return resultado.strip()
+    except Exception as e:
+        return f"Error en razonamiento clínico: {e}"
+
+from typing import Optional
+
+class AnalyzeRequest(BaseModel):
+    imagenBase64: str
+    mimeType: str
+    comentario: Optional[str] = None
+
+class ConsultRequest(BaseModel):
+    pregunta: str
+    reporte_anterior: str
+    imagen_path: Optional[str] = None
+
+def decode_image(base64_str: str) -> Image.Image:
+    try:
+        image_bytes = base64.b64decode(base64_str)
+        return Image.open(io.BytesIO(image_bytes))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid Base64 string")
+
+def apply_opencv_mask(pil_img: Image.Image) -> Image.Image:
+    print("[OpenCV Protocol] Filtrando espectro biológico (eliminando cielo/ruido).")
+    try:
+        img_np = np.array(pil_img)
+        if len(img_np.shape) == 3 and img_np.shape[-1] == 4:
+            img_np = cv2.cvtColor(img_np, cv2.COLOR_RGBA2RGB)
+        img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+        
+        hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+        # Rango para verdes, amarillos y óxido (H=10 a 90)
+        lower_plant = np.array([10, 40, 40])
+        upper_plant = np.array([90, 255, 255])
+        mask = cv2.inRange(hsv, lower_plant, upper_plant)
+        
+        result_bgr = cv2.bitwise_and(img_bgr, img_bgr, mask=mask)
+        result_rgb = cv2.cvtColor(result_bgr, cv2.COLOR_BGR2RGB)
+        return Image.fromarray(result_rgb)
+    except Exception as e:
+        print(f"[OpenCV Error] Fallo al aplicar máscara: {e}")
+        return pil_img
+
+@app.post("/analyze")
+async def analyze_image(req: AnalyzeRequest):
+    img = decode_image(req.imagenBase64)
+    
+    # Asegurar directorio temporal
+    temp_dir = "temp_diagnostics"
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, "current_inference.jpg")
+    # Convertir RGBA → RGB para evitar crash al guardar como JPEG
+    if img.mode == "RGBA":
+        img = img.convert("RGB")
+    img.save(temp_path)
+
+    # ---- FASE 1: CAZADOR (DETECTOR PANORÁMICO) ----
+    res_cazador = cazador.predict(img, save=False)
+    
+    clase_ganadora = "Desconocido"
+    certeza = 0.0
+    reporte_vlm = "Iniciando análisis cerebral..."
+    
+    # Extraemos cajas encontradas
+    boxes = res_cazador[0].boxes
+    
+    if len(boxes) > 0:
+        # ¡Detectó una hoja enferma a lo lejos!
+        coords = boxes.xyxy[0].cpu().numpy()
+        img_recortada = img.crop((coords[0], coords[1], coords[2], coords[3]))
+        
+        # Guardamos el recorte para que el Científico lo vea de cerca
+        if img_recortada.mode == "RGBA":
+            img_recortada = img_recortada.convert("RGB")
+        img_recortada.save(temp_path)
+        
+        # ---- FASE 2: LABORATORIO (CLASIFICADOR MACRO) ----
+        if laboratorio:
+            res_lab = laboratorio.predict(img_recortada, save=False)
+            top1_index = res_lab[0].probs.top1
+            certeza = float(res_lab[0].probs.top1conf)
+            clase_ganadora = res_lab[0].names[top1_index]
+    else:
+        # Fallback de Resistencia: Le tiramos la foto COMPLETA.
+        if laboratorio:
+            res_lab = laboratorio.predict(img, save=False)
+            top1_index = res_lab[0].probs.top1
+            certeza = float(res_lab[0].probs.top1conf)
+            clase_ganadora = res_lab[0].names[top1_index]
+        
+    # ---- FASE 3: EL CIENTÍFICO (VLM) ----
+    reporte_vlm = razonamiento_vlm(temp_path)
+
+    # PROTOCOLO DE VETO IAG-ARQUI (Principio Precautorio Agrícola):
+    # En agricultura, un FALSO NEGATIVO (no detectar enfermedad) es catastrófico.
+    # Si CUALQUIER modelo dice RIESGO → es RIESGO hasta que un agrónomo verifique en campo.
+    repor_vlm_upper = reporte_vlm.upper()
+    vlm_dice_riesgo = "VEREDICTO: RIESGO" in repor_vlm_upper or "DIAGNÓSTICO: RIESGO" in repor_vlm_upper
+    vlm_dice_sano = "VEREDICTO: SANO" in repor_vlm_upper or "DIAGNÓSTICO: SANO" in repor_vlm_upper
+    
+    # Detección heurística: si el VLM no escribió veredicto explícito
+    if not vlm_dice_riesgo and not vlm_dice_sano:
+        frases_sanas = ["no se observan signos", "no se identifican signos", "no presenta signos", "aspecto saludable", "buen estado"]
+        texto_lower = reporte_vlm.lower()
+        conteo_negaciones = sum(1 for f in frases_sanas if f in texto_lower)
+        if conteo_negaciones >= 3:
+            vlm_dice_sano = True
+
+    # Limpiamos las etiquetas de control del reporte
+    for tag in ["[VEREDICTO: RIESGO]", "[VEREDICTO: SANO]", "### VEREDICTO: RIESGO", "### VEREDICTO: SANO", "VEREDICTO: RIESGO", "VEREDICTO: SANO"]:
+        reporte_vlm = reporte_vlm.replace(tag, "")
+    reporte_vlm = reporte_vlm.strip()
+
+    # Análisis de acuerdo/desacuerdo entre modelos
+    yolo_dice_enfermo = clase_ganadora.lower() not in ["healthy", "desconocido"]
+    
+    # DECISIÓN FINAL (Principio Precautorio: cualquier alarma cuenta)
+    es_enfermo = False
+    
+    if yolo_dice_enfermo and vlm_dice_sano:
+        # CONFLICTO: YOLO detectó enfermedad pero VLM no la ve
+        # → PRECAUCIÓN: Marcamos como RIESGO pero informamos el desacuerdo
+        es_enfermo = True
+        reporte_vlm += f"\n\n⚠️ **Nota de Consenso:** El clasificador rápido (YOLO) identificó '{clase_ganadora}' pero el análisis visual profundo no confirma signos evidentes. Se recomienda verificación presencial del lote por un agrónomo."
+        print(f"[Consenso] CONFLICTO: YOLO='{clase_ganadora}' vs VLM='SANO' → Se aplica principio precautorio (RIESGO)")
+    elif yolo_dice_enfermo and vlm_dice_riesgo:
+        # ACUERDO TOTAL: Ambos dicen enfermo → alta confianza
+        es_enfermo = True
+        print(f"[Consenso] ACUERDO: YOLO='{clase_ganadora}' + VLM='RIESGO' → Diagnóstico confirmado")
+    elif not yolo_dice_enfermo and vlm_dice_riesgo:
+        # VLM detectó algo que YOLO no vio → confiar en el VLM (es más inteligente)
+        es_enfermo = True
+        clase_ganadora = "Anomalía Visual (Detectada por Científico VLM)"
+        print(f"[Consenso] VLM detectó riesgo que YOLO no vio → Confiamos en VLM")
+    else:
+        # Ambos dicen sano
+        es_enfermo = False
+        if clase_ganadora.lower() == "desconocido":
+            clase_ganadora = "Healthy"
+        
+    score_salud = 95
+    if es_enfermo:
+        score_salud = max(20, 100 - int(certeza * 100)) 
+        if score_salud > 60: score_salud = 60 
+    else:
+        score_salud = max(80, int(certeza * 100)) if certeza > 0 else 90
+        
+    diagnostico = {
+        "salud": "en_riesgo" if es_enfermo else "sano",
+        "score": score_salud,
+        "resumen": f"Cerebro Pangea v12 + Qwen-VLM. Identificación Botánica: {clase_ganadora}.",
+        "reporte_vlm": reporte_vlm, # <--- EL NUEVO ALMA DEL DIAGNÓSTICO
+        "cultivo_detectado": "Caña de azúcar",
+        "confianza_analisis": int(certeza * 100),
+        "issues": [
+            {
+               "tipo": "enfermedad",
+               "nombre": clase_ganadora,
+               "severidad": "alta",
+               "confianza": int(certeza * 100),
+               "descripcion": "Diagnóstico matemático avalado por cruce Mendeley/Kaggle."
+            }
+        ] if es_enfermo else [],
+        "recomendaciones": [
+            "Aplicar fungicida de impacto inmediato." if clase_ganadora in ["Rust", "Red_Rot"] else "Aislar cuadrante para evitar contagio fúngico.",
+            "Contactar con ingeniero del ingenio azucarero mediante módulo Cooperativa."
+        ] if es_enfermo else [
+            "Lote en condiciones fisiológicas normales.",
+            "Mantener cronograma de riego estándar."
+        ],
+        "insumos": [
+            {
+                "id": f"ins-plaga-{clase_ganadora}",
+                "nombre": "Kit Fitosanitario de Choque",
+                "cantidad": "1",
+                "unidad": "dosis lote",
+                "prioridad": "alta",
+                "precio_estimado": "$25.000",
+                "categoria": "fitosanitario"
+            }
+        ] if es_enfermo else []
+    }
+    
+    return {"diagnostico": diagnostico}
+
+@app.post("/consult")
+async def consult_vlm(req: ConsultRequest):
+    """Permite al productor hacer preguntas de seguimiento sobre el diagnóstico."""
+    if not vlm_model:
+        raise HTTPException(status_code=503, detail="Motor de consulta no disponible")
+    
+    # PROMPT DE CONSULTA (Modo Asesor Directo)
+    prompt_chat = (
+        "Eres el Científico Agrónomo Experto de Agro-IA en modo ASESORÍA. "
+        "Ya realizaste el diagnóstico y ahora respondes dudas del productor. "
+        "REGLA CRÍTICA: NO repitas la lista de plagas o enfermedades si ya fueron descartadas. "
+        "No vuelvas a evaluar todo el catálogo. Enfócate ÚNICAMENTE en responder la "
+        "duda del productor basándote en lo que ya viste en la imagen.\n\n"
+        f"Contexto del reporte previo: '{req.reporte_anterior}'\n"
+        f"Pregunta del productor: '{req.pregunta}'\n\n"
+        "INSTRUCCIÓN: Responde de forma breve, profesional y útil usando Markdown. "
+        "Si el productor pregunta sobre cuidados, dale consejos específicos para lo que encontraste."
+    )
+    
+    # Si tenemos el path de la imagen, lo usamos para el contexto visual
+    img_path = req.imagen_path or "temp_diagnostics/current_inference.jpg"
+    
+    prompt = apply_chat_template(vlm_processor, vlm_config, prompt_chat, num_images=1)
+    
+    try:
+        resultado = generate(
+            vlm_model, 
+            vlm_processor, 
+            prompt, 
+            image=[img_path], 
+            max_tokens=600, # Aumentado para mayor profundidad
+            temperature=0.3,
+            verbose=False
+        )
+        return {"respuesta": resultado.strip()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error en consulta: {e}")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("pangea_inference_bridge:app", host="0.0.0.0", port=8000, reload=True)
