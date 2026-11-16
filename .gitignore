@@ -11,3 +11,4 @@ BIBLIOTECA_TECNICA/
 forja_lora/
 *.out
 *.pid
+!dinov2_classifier_best.pth
